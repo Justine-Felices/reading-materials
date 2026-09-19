@@ -141,10 +141,11 @@ export default function GradeSelector({
       </div>
 
       <div
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-3"
+        className="-mx-4 snap-x snap-mandatory overflow-x-auto overscroll-x-contain px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:snap-none sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
         role="listbox"
         aria-label="Select grade"
       >
+        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-3 lg:grid-cols-6">
         {GRADES.map((grade) => {
           const theme = gradeThemes[grade];
           const isActive = selected === grade;
@@ -156,7 +157,7 @@ export default function GradeSelector({
               role="option"
               aria-selected={isActive}
               onClick={() => onChange(grade)}
-              className={`group relative min-h-[9.75rem] overflow-hidden rounded-2xl p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${theme.card} ${
+              className={`group relative w-[9.25rem] shrink-0 snap-start min-h-[9.75rem] overflow-hidden rounded-2xl p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-auto sm:shrink ${theme.card} ${
                 isActive ? `ring-2 ${theme.ring} ring-offset-2` : ""
               }`}
             >
@@ -181,6 +182,7 @@ export default function GradeSelector({
             </button>
           );
         })}
+        </div>
       </div>
     </div>
   );

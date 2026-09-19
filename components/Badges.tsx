@@ -4,10 +4,7 @@ import type { Level, Subject } from "@/types/reading-material";
 const subjectStyles: Record<Subject, string> = {
   English: "bg-[#e4f1f2] text-[#22646c]",
   Filipino: "bg-rose-100 text-rose-700",
-  Mathematics: "bg-amber-100 text-amber-800",
   Science: "bg-emerald-100 text-emerald-700",
-  "Araling Panlipunan": "bg-orange-100 text-orange-800",
-  Other: "bg-violet-100 text-violet-700",
 };
 
 const levelStyles: Record<Level, string> = {

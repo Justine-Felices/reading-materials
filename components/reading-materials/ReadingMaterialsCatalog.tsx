@@ -1,6 +1,7 @@
 "use client";
 
-import { BookOpen } from "lucide-react";
+import { BookOpen, ChevronDown } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMaterials } from "@/components/materials/MaterialsProvider";
 import GradeSelector from "@/components/reading-materials/GradeSelector";
@@ -8,7 +9,12 @@ import ReadingMaterialCard from "@/components/reading-materials/ReadingMaterialC
 import ReadingMaterialSearch from "@/components/reading-materials/ReadingMaterialSearch";
 import SubjectSelector from "@/components/reading-materials/SubjectSelector";
 import {
+  buildCatalogHref,
+  parseCatalogBrowse,
+} from "@/lib/catalog-browse";
+import {
   LEVELS,
+  SUBJECTS,
   type Grade,
   type Level,
   type Subject,
@@ -16,11 +22,26 @@ import {
 
 export default function ReadingMaterialsCatalog() {
   const { getByGrade } = useMaterials();
-  const [grade, setGrade] = useState<Grade | null>(null);
-  const [subject, setSubject] = useState<Subject | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const initial = useMemo(
+    () => parseCatalogBrowse(searchParams),
+    // Only seed from the first URL; later updates go through handlers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  const [grade, setGrade] = useState<Grade | null>(initial.grade);
+  const [subject, setSubject] = useState<Subject | null>(initial.subject);
+  const [focusWeek, setFocusWeek] = useState<number | null>(initial.week);
+  const [openWeek, setOpenWeek] = useState<number | null>(initial.week);
   const [query, setQuery] = useState("");
   const subjectSectionRef = useRef<HTMLDivElement>(null);
   const materialsSectionRef = useRef<HTMLDivElement>(null);
+  const weekRefs = useRef<Map<number, HTMLElement>>(new Map());
+  const skipScrollRef = useRef(Boolean(initial.grade));
 
   const gradeMaterials = useMemo(() => {
     if (!grade) return [];
@@ -28,9 +49,24 @@ export default function ReadingMaterialsCatalog() {
   }, [grade, getByGrade]);
 
   const availableSubjects = useMemo(() => {
-    const set = new Set(gradeMaterials.map((m) => m.subject));
-    return Array.from(set);
+    const set = new Set(
+      gradeMaterials
+        .map((m) => m.subject)
+        .filter((subject): subject is Subject =>
+          (SUBJECTS as readonly string[]).includes(subject),
+        ),
+    );
+    return SUBJECTS.filter((subject) => set.has(subject));
   }, [gradeMaterials]);
+
+  // Drop subject if it isn't available for the restored grade.
+  useEffect(() => {
+    if (!subject) return;
+    if (availableSubjects.length === 0) return;
+    if (!availableSubjects.includes(subject)) {
+      setSubject(null);
+    }
+  }, [availableSubjects, subject]);
 
   const subjectMaterials = useMemo(() => {
     if (!subject) return [];
@@ -72,8 +108,25 @@ export default function ReadingMaterialsCatalog() {
     });
   }, [filtered]);
 
+  const syncUrl = (next: {
+    grade: Grade | null;
+    subject: Subject | null;
+    week?: number | null;
+  }) => {
+    const href = buildCatalogHref({
+      grade: next.grade,
+      subject: next.subject,
+      week: next.week ?? null,
+    });
+    const current = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+    if (href !== current) {
+      router.replace(href, { scroll: false });
+    }
+  };
+
   useEffect(() => {
     if (!grade) return;
+    if (skipScrollRef.current) return;
     const timer = window.setTimeout(() => {
       subjectSectionRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -85,6 +138,18 @@ export default function ReadingMaterialsCatalog() {
 
   useEffect(() => {
     if (!grade || !subject) return;
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false;
+      if (focusWeek != null) {
+        const timer = window.setTimeout(() => {
+          weekRefs.current
+            .get(focusWeek)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 80);
+        return () => window.clearTimeout(timer);
+      }
+      return;
+    }
     const timer = window.setTimeout(() => {
       materialsSectionRef.current?.scrollIntoView({
         behavior: "smooth",
@@ -92,17 +157,32 @@ export default function ReadingMaterialsCatalog() {
       });
     }, 50);
     return () => window.clearTimeout(timer);
-  }, [grade, subject]);
+  }, [grade, subject, focusWeek]);
 
   const handleGradeChange = (nextGrade: Grade) => {
+    skipScrollRef.current = false;
+    setFocusWeek(null);
+    setOpenWeek(null);
     setGrade(nextGrade);
     setSubject(null);
     setQuery("");
+    syncUrl({ grade: nextGrade, subject: null, week: null });
   };
 
   const handleSubjectChange = (nextSubject: Subject) => {
+    skipScrollRef.current = false;
+    setFocusWeek(null);
+    setOpenWeek(null);
     setSubject(nextSubject);
     setQuery("");
+    syncUrl({ grade, subject: nextSubject, week: null });
+  };
+
+  const toggleWeek = (week: number) => {
+    const next = openWeek === week ? null : week;
+    setOpenWeek(next);
+    setFocusWeek(next);
+    syncUrl({ grade, subject, week: next });
   };
 
   return (
@@ -148,55 +228,102 @@ export default function ReadingMaterialsCatalog() {
               </p>
             </div>
           ) : (
-            <div className="space-y-10">
-              {weekGroups.map(({ week, levels }) => (
-                <section key={week} className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <h3 className="font-display text-xl font-semibold text-foreground sm:text-2xl">
-                      Week {week}
-                    </h3>
-                    <div className="h-px flex-1 bg-slate-200" />
-                  </div>
+            <div className="space-y-3">
+              {weekGroups.map(({ week, levels }) => {
+                const isOpen = openWeek === week;
+                const materialCount = levels.reduce(
+                  (sum, { materials }) => sum + materials.length,
+                  0,
+                );
+                const panelId = `week-${week}-panel`;
 
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    {levels.map(({ level, materials }) => (
-                      <div
-                        key={`${week}-${level}`}
-                        className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 sm:p-4"
+                return (
+                  <section
+                    key={week}
+                    ref={(node) => {
+                      if (node) weekRefs.current.set(week, node);
+                      else weekRefs.current.delete(week);
+                    }}
+                    className="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_2px_10px_rgba(15,23,42,0.04)]"
+                  >
+                    <h3 className="m-0">
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        aria-controls={panelId}
+                        onClick={() => toggleWeek(week)}
+                        className="flex w-full items-center gap-3 px-4 py-4 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5"
                       >
-                        <div className="mb-3">
-                          <span
-                            className={`inline-flex min-h-9 items-center rounded-full px-3 py-1.5 text-sm font-bold ${
-                              level === 1
-                                ? "bg-emerald-100 text-emerald-800"
-                                : level === 2
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-rose-100 text-rose-800"
-                            }`}
-                          >
-                            Level {level}
-                          </span>
-                        </div>
+                        <span className="font-display text-xl font-semibold text-foreground sm:text-2xl">
+                          Week {week}
+                        </span>
+                        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                          {materialCount}{" "}
+                          {materialCount === 1 ? "material" : "materials"}
+                        </span>
+                        <ChevronDown
+                          className={`ml-auto h-5 w-5 shrink-0 text-slate-500 transition-transform duration-200 ${
+                            isOpen ? "rotate-180" : ""
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    </h3>
 
-                        {materials.length > 0 ? (
-                          <div className="space-y-4">
-                            {materials.map((item) => (
-                              <ReadingMaterialCard
-                                key={item.id}
-                                material={item}
-                              />
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="py-6 text-sm text-muted">
-                            No materials yet.
-                          </p>
-                        )}
+                    {isOpen ? (
+                      <div
+                        id={panelId}
+                        role="region"
+                        aria-label={`Week ${week} materials`}
+                        className="border-t border-slate-100 px-3 pb-4 pt-3 sm:px-4 sm:pb-5"
+                      >
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                          {levels.map(({ level, materials }) => (
+                            <div
+                              key={`${week}-${level}`}
+                              className="rounded-2xl border border-slate-100 bg-slate-50/80 p-3 sm:p-4"
+                            >
+                              <div className="mb-3">
+                                <span
+                                  className={`inline-flex min-h-9 items-center rounded-full px-3 py-1.5 text-sm font-bold ${
+                                    level === 1
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : level === 2
+                                        ? "bg-amber-100 text-amber-800"
+                                        : "bg-rose-100 text-rose-800"
+                                  }`}
+                                >
+                                  Level {level}
+                                </span>
+                              </div>
+
+                              {materials.length > 0 ? (
+                                <div className="space-y-4">
+                                  {materials.map((item) => (
+                                    <ReadingMaterialCard
+                                      key={item.id}
+                                      material={item}
+                                      browseContext={{
+                                        grade,
+                                        subject,
+                                        week: item.week,
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="py-6 text-sm text-muted">
+                                  No materials yet.
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
+                    ) : null}
+                  </section>
+                );
+              })}
             </div>
           )}
         </div>

@@ -1,10 +1,4 @@
-export type Subject =
-  | "English"
-  | "Filipino"
-  | "Mathematics"
-  | "Science"
-  | "Araling Panlipunan"
-  | "Other";
+export type Subject = "English" | "Filipino" | "Science";
 
 export type Grade = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -52,14 +46,7 @@ export interface ReadingMaterial {
 
 export const GRADES: Grade[] = [1, 2, 3, 4, 5, 6];
 export const LEVELS: Level[] = [1, 2, 3];
-export const SUBJECTS: Subject[] = [
-  "English",
-  "Filipino",
-  "Mathematics",
-  "Science",
-  "Araling Panlipunan",
-  "Other",
-];
+export const SUBJECTS: Subject[] = ["English", "Filipino", "Science"];
 export const THUMBNAIL_THEMES: ThumbnailTheme[] = [
   "hen",
   "plant",

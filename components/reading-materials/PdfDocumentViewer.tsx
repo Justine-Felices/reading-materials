@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   getDocument,
   GlobalWorkerOptions,
+  type PDFDocumentLoadingTask,
   type PDFDocumentProxy,
 } from "pdfjs-dist";
 
@@ -17,6 +18,23 @@ type PdfDocumentViewerProps = {
   className?: string;
 };
 
+async function disposePdf(
+  loadingTask: PDFDocumentLoadingTask | null,
+  pdf: PDFDocumentProxy | null,
+) {
+  try {
+    if (loadingTask && typeof loadingTask.destroy === "function") {
+      await loadingTask.destroy();
+      return;
+    }
+    if (pdf && typeof pdf.cleanup === "function") {
+      await pdf.cleanup();
+    }
+  } catch {
+    // Ignore disposal races during fast navigations.
+  }
+}
+
 export default function PdfDocumentViewer({
   url,
   pageNumber,
@@ -27,6 +45,7 @@ export default function PdfDocumentViewer({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfRef = useRef<PDFDocumentProxy | null>(null);
+  const loadingTaskRef = useRef<PDFDocumentLoadingTask | null>(null);
   const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
 
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -59,13 +78,16 @@ export default function PdfDocumentViewer({
     stableOnPageCountChange(0);
 
     const load = async () => {
-      try {
-        await pdfRef.current?.destroy();
-        pdfRef.current = null;
+      await disposePdf(loadingTaskRef.current, pdfRef.current);
+      loadingTaskRef.current = null;
+      pdfRef.current = null;
 
-        const pdf = await getDocument({ url }).promise;
+      try {
+        const loadingTask = getDocument({ url });
+        loadingTaskRef.current = loadingTask;
+        const pdf = await loadingTask.promise;
         if (cancelled) {
-          await pdf.destroy();
+          await disposePdf(loadingTask, pdf);
           return;
         }
         pdfRef.current = pdf;
@@ -87,7 +109,8 @@ export default function PdfDocumentViewer({
       cancelled = true;
       renderTaskRef.current?.cancel();
       renderTaskRef.current = null;
-      void pdfRef.current?.destroy();
+      void disposePdf(loadingTaskRef.current, pdfRef.current);
+      loadingTaskRef.current = null;
       pdfRef.current = null;
     };
   }, [url, stableOnPageCountChange]);
@@ -163,7 +186,11 @@ export default function PdfDocumentViewer({
           Loading PDF…
         </div>
       ) : null}
-      <div className={`flex justify-center p-3 sm:p-4 ${status === "loading" ? "hidden" : ""}`}>
+      <div
+        className={`flex justify-center p-3 sm:p-4 ${
+          status === "loading" ? "hidden" : ""
+        }`}
+      >
         <canvas
           ref={canvasRef}
           className="max-w-full rounded-md bg-white shadow-[0_8px_24px_rgba(15,23,42,0.12)]"

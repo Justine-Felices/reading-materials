@@ -5,21 +5,36 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { isTeacherLoggedIn, loginTeacher } from "@/lib/teacher-auth";
+import {
+  loginTeacherWithPassword,
+  refreshTeacherSession,
+} from "@/lib/teacher-auth";
 
 export default function TeacherLoginClient() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (isTeacherLoggedIn()) {
-      router.replace("/teacher/upload");
-    }
+    let cancelled = false;
+    void (async () => {
+      const session = await refreshTeacherSession();
+      if (cancelled) return;
+      if (session.authenticated) {
+        router.replace("/teacher/upload");
+        return;
+      }
+      setChecking(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
 
@@ -28,10 +43,31 @@ export default function TeacherLoginClient() {
       return;
     }
 
-    // Demo only — any credentials are accepted (no backend yet)
-    loginTeacher(email.trim());
-    router.push("/teacher/upload");
+    setSubmitting(true);
+    try {
+      const result = await loginTeacherWithPassword(
+        email.trim(),
+        password,
+      );
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      router.push("/teacher/upload");
+    } catch {
+      setError("Could not sign in. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (checking) {
+    return (
+      <div className="mx-auto flex min-h-[40vh] max-w-md items-center justify-center px-4 py-16 text-muted">
+        Checking teacher access…
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#e4f1f2]">
@@ -56,7 +92,7 @@ export default function TeacherLoginClient() {
         </div>
 
         <form
-          onSubmit={handleSubmit}
+          onSubmit={(event) => void handleSubmit(event)}
           className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_8px_30px_rgba(34,100,108,0.08)] sm:p-8"
         >
           <div className="space-y-2">
@@ -100,16 +136,17 @@ export default function TeacherLoginClient() {
             </p>
           ) : (
             <p className="text-xs text-muted">
-              Demo mode: any email and password will work.
+              Use the single teacher account configured for this school.
             </p>
           )}
 
           <button
             type="submit"
-            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-white transition hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            disabled={submitting}
+            className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-white transition hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
           >
             <LogIn className="h-4 w-4" aria-hidden="true" />
-            Sign in
+            {submitting ? "Signing in…" : "Sign in"}
           </button>
         </form>
 

@@ -11,17 +11,23 @@ import {
 } from "@/components/Badges";
 import MaterialThumbnail from "@/components/MaterialThumbnail";
 import Toast from "@/components/Toast";
+import {
+  buildMaterialHref,
+  type CatalogBrowseState,
+} from "@/lib/catalog-browse";
 import { downloadMaterial } from "@/lib/download-material";
 import type { ReadingMaterial } from "@/types/reading-material";
 
 interface ReadingMaterialCardProps {
   material: ReadingMaterial;
   showGrade?: boolean;
+  browseContext?: Partial<CatalogBrowseState>;
 }
 
 export default function ReadingMaterialCard({
   material,
   showGrade = false,
+  browseContext,
 }: ReadingMaterialCardProps) {
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState("Download started.");
@@ -41,6 +47,14 @@ export default function ReadingMaterialCard({
       setDownloading(false);
     }
   };
+
+  const href = browseContext
+    ? buildMaterialHref(material.id, {
+        grade: browseContext.grade ?? material.grade,
+        subject: browseContext.subject ?? material.subject,
+        week: browseContext.week ?? material.week,
+      })
+    : `/reading-materials/${material.id}`;
 
   return (
     <>
@@ -73,7 +87,7 @@ export default function ReadingMaterialCard({
 
           <div className="mt-auto space-y-2.5 pt-2">
             <Link
-              href={`/reading-materials/${material.id}`}
+              href={href}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-white transition hover:bg-primary-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               Read Material

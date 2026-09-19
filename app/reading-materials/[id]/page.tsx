@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import MaterialDetailClient from "@/components/reading-materials/MaterialDetailClient";
 import {
   getReadingMaterialById,
@@ -33,5 +34,15 @@ export default async function MaterialReadingPage({
   params,
 }: MaterialPageProps) {
   const { id } = await params;
-  return <MaterialDetailClient id={id} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-5xl px-4 py-16 text-center text-muted">
+          Loading material…
+        </div>
+      }
+    >
+      <MaterialDetailClient id={id} />
+    </Suspense>
+  );
 }

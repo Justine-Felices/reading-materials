@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   GradeBadge,
   LevelBadge,
@@ -11,10 +12,24 @@ import MaterialThumbnail from "@/components/MaterialThumbnail";
 import { useMaterials } from "@/components/materials/MaterialsProvider";
 import ReadingMaterialViewer from "@/components/reading-materials/ReadingMaterialViewer";
 import ReadingNavigation from "@/components/reading-materials/ReadingNavigation";
+import {
+  buildCatalogHref,
+  parseCatalogBrowse,
+} from "@/lib/catalog-browse";
 
 export default function MaterialDetailClient({ id }: { id: string }) {
   const { getById } = useMaterials();
+  const searchParams = useSearchParams();
   const material = getById(id);
+
+  const browse = parseCatalogBrowse(searchParams);
+  const backHref = material
+    ? buildCatalogHref({
+        grade: browse.grade ?? material.grade,
+        subject: browse.subject ?? material.subject,
+        week: browse.week ?? material.week,
+      })
+    : "/reading-materials";
 
   if (!material) {
     return (
@@ -38,7 +53,7 @@ export default function MaterialDetailClient({ id }: { id: string }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
       <div className="mb-5">
-        <ReadingNavigation />
+        <ReadingNavigation href={backHref} />
       </div>
 
       <section className="mb-8 flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -66,7 +81,7 @@ export default function MaterialDetailClient({ id }: { id: string }) {
         </div>
       </section>
 
-      <ReadingMaterialViewer material={material} />
+      <ReadingMaterialViewer material={material} backHref={backHref} />
     </div>
   );
 }

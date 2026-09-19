@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { BookOpen, Sparkles } from "lucide-react";
 import ReadingMaterialsHeroArt from "@/components/reading-materials/ReadingMaterialsHeroArt";
 import ReadingMaterialsCatalog from "@/components/reading-materials/ReadingMaterialsCatalog";
@@ -12,7 +13,6 @@ export const metadata: Metadata = {
 export default function ReadingMaterialsPage() {
   return (
     <div className="bg-white">
-      {/* Compact hero — matches mock proportions (not tall) */}
       <section className="relative overflow-hidden bg-[#e4f1f2]">
         <div
           className="pointer-events-none absolute inset-0 opacity-60"
@@ -74,7 +74,15 @@ export default function ReadingMaterialsPage() {
       </section>
 
       <div className="mx-auto max-w-7xl px-4 pb-12 pt-6 sm:px-6 lg:px-8 lg:pb-16 lg:pt-8">
-        <ReadingMaterialsCatalog />
+        <Suspense
+          fallback={
+            <p className="py-12 text-center text-sm text-muted">
+              Loading materials…
+            </p>
+          }
+        >
+          <ReadingMaterialsCatalog />
+        </Suspense>
       </div>
     </div>
   );

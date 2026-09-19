@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -13,9 +14,15 @@ import type { Grade, ReadingMaterial } from "@/types/reading-material";
 
 interface MaterialsContextValue {
   materials: ReadingMaterial[];
-  addMaterial: (material: ReadingMaterial) => void;
-  updateMaterial: (id: string, patch: Partial<ReadingMaterial>) => void;
-  deleteMaterial: (id: string) => void;
+  loading: boolean;
+  persistenceEnabled: boolean;
+  refreshMaterials: () => Promise<void>;
+  addMaterial: (material: ReadingMaterial) => Promise<boolean>;
+  updateMaterial: (
+    id: string,
+    patch: Partial<ReadingMaterial>,
+  ) => Promise<boolean>;
+  deleteMaterial: (id: string) => Promise<boolean>;
   getById: (id: string) => ReadingMaterial | undefined;
   getByGrade: (grade: Grade) => ReadingMaterial[];
   getFeatured: (limit?: number) => ReadingMaterial[];
@@ -33,26 +40,133 @@ function cloneSeedMaterials(): ReadingMaterial[] {
   }));
 }
 
+async function readError(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { error?: string };
+    return body.error || `Request failed (${response.status})`;
+  } catch {
+    return `Request failed (${response.status})`;
+  }
+}
+
 export function MaterialsProvider({ children }: { children: ReactNode }) {
   const [materials, setMaterials] = useState<ReadingMaterial[]>(cloneSeedMaterials);
+  const [loading, setLoading] = useState(true);
+  const [persistenceEnabled, setPersistenceEnabled] = useState(false);
 
-  const addMaterial = useCallback((material: ReadingMaterial) => {
-    setMaterials((current) => [material, ...current]);
+  const refreshMaterials = useCallback(async () => {
+    const response = await fetch("/api/materials", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+    const body = (await response.json()) as {
+      materials: ReadingMaterial[];
+      configured?: boolean;
+    };
+    setMaterials(body.materials);
+    setPersistenceEnabled(Boolean(body.configured));
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      try {
+        await refreshMaterials();
+      } catch (error) {
+        console.error("[MaterialsProvider] load failed", error);
+        if (!cancelled) {
+          setMaterials(cloneSeedMaterials());
+          setPersistenceEnabled(false);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshMaterials]);
+
+  const addMaterial = useCallback(async (material: ReadingMaterial) => {
+    const response = await fetch("/api/materials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(material),
+    });
+
+    if (response.status === 503) {
+      setMaterials((current) => [material, ...current]);
+      setPersistenceEnabled(false);
+      return false;
+    }
+
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+
+    const body = (await response.json()) as { material: ReadingMaterial };
+    setMaterials((current) => [
+      body.material,
+      ...current.filter((item) => item.id !== body.material.id),
+    ]);
+    setPersistenceEnabled(true);
+    return true;
   }, []);
 
   const updateMaterial = useCallback(
-    (id: string, patch: Partial<ReadingMaterial>) => {
+    async (id: string, patch: Partial<ReadingMaterial>) => {
+      const response = await fetch(`/api/materials/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+
+      if (response.status === 503) {
+        setMaterials((current) =>
+          current.map((material) =>
+            material.id === id ? { ...material, ...patch, id } : material,
+          ),
+        );
+        setPersistenceEnabled(false);
+        return false;
+      }
+
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+
+      const body = (await response.json()) as { material: ReadingMaterial };
       setMaterials((current) =>
         current.map((material) =>
-          material.id === id ? { ...material, ...patch, id } : material,
+          material.id === id ? body.material : material,
         ),
       );
+      setPersistenceEnabled(true);
+      return true;
     },
     [],
   );
 
-  const deleteMaterial = useCallback((id: string) => {
+  const deleteMaterial = useCallback(async (id: string) => {
+    const response = await fetch(`/api/materials/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+
+    if (response.status === 503) {
+      setMaterials((current) => current.filter((material) => material.id !== id));
+      setPersistenceEnabled(false);
+      return false;
+    }
+
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+
     setMaterials((current) => current.filter((material) => material.id !== id));
+    setPersistenceEnabled(true);
+    return true;
   }, []);
 
   const getById = useCallback(
@@ -84,6 +198,9 @@ export function MaterialsProvider({ children }: { children: ReactNode }) {
   const value = useMemo(
     () => ({
       materials,
+      loading,
+      persistenceEnabled,
+      refreshMaterials,
       addMaterial,
       updateMaterial,
       deleteMaterial,
@@ -93,6 +210,9 @@ export function MaterialsProvider({ children }: { children: ReactNode }) {
     }),
     [
       materials,
+      loading,
+      persistenceEnabled,
+      refreshMaterials,
       addMaterial,
       updateMaterial,
       deleteMaterial,

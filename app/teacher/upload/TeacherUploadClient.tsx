@@ -23,8 +23,8 @@ import { useMaterials } from "@/components/materials/MaterialsProvider";
 import Toast from "@/components/Toast";
 import {
   getTeacherEmail,
-  isTeacherLoggedIn,
-  logoutTeacher,
+  logoutTeacherSession,
+  refreshTeacherSession,
 } from "@/lib/teacher-auth";
 import {
   detectMediaType,
@@ -48,6 +48,8 @@ type PageMedia = {
   url: string;
   mediaType: PageMediaType;
   fileName?: string;
+  /** Local file waiting to upload to Supabase Storage */
+  file?: File;
 };
 
 type FormState = {
@@ -184,10 +186,12 @@ export default function TeacherUploadClient() {
     addMaterial,
     updateMaterial,
     deleteMaterial,
+    persistenceEnabled,
   } = useMaterials();
 
   const formRef = useRef<HTMLFormElement>(null);
   const baselineRef = useRef(serializeForm(emptyForm()));
+  const [panelHeight, setPanelHeight] = useState<number | null>(null);
 
   const [ready, setReady] = useState(false);
   const [teacherEmail, setTeacherEmail] = useState<string | null>(null);
@@ -198,6 +202,9 @@ export default function TeacherUploadClient() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingReplace, setPendingReplace] = useState<ReadingMaterial | null>(
+    null,
+  );
   const [pendingDiscard, setPendingDiscard] = useState<
     null | "cancel" | { type: "edit"; material: ReadingMaterial }
   >(null);
@@ -210,12 +217,20 @@ export default function TeacherUploadClient() {
   const isDirty = serializeForm(form) !== baselineRef.current;
 
   useEffect(() => {
-    if (!isTeacherLoggedIn()) {
-      router.replace("/teacher/login");
-      return;
-    }
-    setTeacherEmail(getTeacherEmail());
-    setReady(true);
+    let cancelled = false;
+    void (async () => {
+      const session = await refreshTeacherSession();
+      if (cancelled) return;
+      if (!session.authenticated) {
+        router.replace("/teacher/login");
+        return;
+      }
+      setTeacherEmail(session.email ?? getTeacherEmail());
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   useEffect(() => {
@@ -227,6 +242,40 @@ export default function TeacherUploadClient() {
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [isDirty]);
+
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || typeof ResizeObserver === "undefined") return;
+
+    const syncHeight = () => {
+      // Only match heights on desktop side-by-side layout.
+      if (window.matchMedia("(min-width: 768px)").matches) {
+        setPanelHeight(Math.ceil(form.getBoundingClientRect().height));
+      } else {
+        setPanelHeight(null);
+      }
+    };
+
+    syncHeight();
+    const observer = new ResizeObserver(syncHeight);
+    observer.observe(form);
+    window.addEventListener("resize", syncHeight);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", syncHeight);
+    };
+  }, [ready, editingId, form.pages.length, error, pendingDiscard]);
+
+  useEffect(() => {
+    if (!pendingReplace) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !saving) {
+        setPendingReplace(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [pendingReplace, saving]);
 
   const sortedMaterials = useMemo(
     () =>
@@ -278,6 +327,7 @@ export default function TeacherUploadClient() {
     setEditingId(nextEditingId);
     setError("");
     setPendingDiscard(null);
+    setPendingReplace(null);
   };
 
   const resetForm = () => {
@@ -285,8 +335,9 @@ export default function TeacherUploadClient() {
   };
 
   const handleLogout = () => {
-    logoutTeacher();
-    router.replace("/teacher/login");
+    void logoutTeacherSession().then(() => {
+      router.replace("/teacher/login");
+    });
   };
 
   const requestEdit = (material: ReadingMaterial) => {
@@ -322,13 +373,18 @@ export default function TeacherUploadClient() {
     }
   };
 
-  const confirmDelete = (id: string) => {
-    deleteMaterial(id);
-    if (editingId === id) {
-      resetForm();
+  const confirmDelete = async (id: string) => {
+    try {
+      await deleteMaterial(id);
+      if (editingId === id) {
+        resetForm();
+      }
+      setPendingDeleteId(null);
+      showToast("Material deleted.");
+    } catch (err) {
+      setPendingDeleteId(null);
+      setError(err instanceof Error ? err.message : "Delete failed.");
     }
-    setPendingDeleteId(null);
-    showToast("Material deleted.");
   };
 
   const updatePageUrl = (index: number, value: string) => {
@@ -369,6 +425,7 @@ export default function TeacherUploadClient() {
         url: URL.createObjectURL(file),
         mediaType: isPdf ? "pdf" : "image",
         fileName: file.name,
+        file,
       };
       return { ...prev, pages };
     });
@@ -403,19 +460,24 @@ export default function TeacherUploadClient() {
     setFilterSubject("all");
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const findSlotConflict = () =>
+    materials.find(
+      (material) =>
+        material.id !== editingId &&
+        material.grade === form.grade &&
+        material.week === form.week &&
+        material.level === form.level &&
+        material.subject === form.subject,
+    );
+
+  const saveMaterial = async (options?: {
+    replaceConflict?: ReadingMaterial | null;
+  }) => {
     setError("");
+    setPendingReplace(null);
 
     const trimmedTitle = form.title.trim();
     const trimmedDescription = form.description.trim();
-    const filledPages = form.pages
-      .map((page) => ({
-        url: page.url.trim(),
-        mediaType: page.mediaType,
-        fileName: page.fileName,
-      }))
-      .filter((page) => page.url);
 
     if (!trimmedTitle || !trimmedDescription) {
       setError("Please enter a title and description.");
@@ -427,56 +489,122 @@ export default function TeacherUploadClient() {
       return;
     }
 
-    const slotTaken = materials.some(
-      (material) =>
-        material.id !== editingId &&
-        material.grade === form.grade &&
-        material.week === form.week &&
-        material.level === form.level &&
-        material.subject === form.subject,
-    );
-    if (slotTaken) {
-      setError(
-        "A material already exists for this grade, week, level, and subject.",
-      );
+    const hasPage = form.pages.some((page) => page.url.trim() || page.file);
+    if (!hasPage) {
+      setError("Add at least one image or PDF (URL or attachment).");
+      return;
+    }
+
+    const conflict = options?.replaceConflict ?? findSlotConflict();
+    if (conflict && options?.replaceConflict === undefined) {
+      setPendingReplace(conflict);
       return;
     }
 
     setSaving(true);
-    const mediaError = await validateMediaUrls(filledPages);
-    setSaving(false);
-    if (mediaError) {
-      setError(mediaError);
-      return;
+    try {
+      const uploadedPages: PageMedia[] = [];
+      for (const page of form.pages) {
+        const url = page.url.trim();
+        if (!url && !page.file) continue;
+
+        if (page.file) {
+          const body = new FormData();
+          body.append("file", page.file);
+          const uploadResponse = await fetch("/api/materials/upload", {
+            method: "POST",
+            body,
+          });
+          if (!uploadResponse.ok) {
+            const uploadBody = (await uploadResponse.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            throw new Error(
+              uploadBody.error ||
+                "File upload failed. Check Supabase storage setup.",
+            );
+          }
+          const uploaded = (await uploadResponse.json()) as {
+            url: string;
+            mediaType: PageMediaType;
+            fileName?: string;
+          };
+          uploadedPages.push({
+            url: uploaded.url,
+            mediaType: uploaded.mediaType,
+            fileName: uploaded.fileName ?? page.fileName,
+          });
+        } else {
+          uploadedPages.push({
+            url,
+            mediaType: page.mediaType,
+            fileName: page.fileName,
+          });
+        }
+      }
+
+      const mediaError = await validateMediaUrls(uploadedPages);
+      if (mediaError) {
+        setError(mediaError);
+        return;
+      }
+
+      const pages = buildMediaPages(uploadedPages);
+      const coverImageUrl = uploadedPages[0].url;
+      const payload = {
+        title: trimmedTitle,
+        description: trimmedDescription,
+        grade: form.grade,
+        week: form.week,
+        level: form.level,
+        subject: form.subject,
+        thumbnail: DEFAULT_THUMBNAIL,
+        coverImageUrl,
+        downloadUrl: coverImageUrl,
+        pages,
+      };
+
+      if (conflict) {
+        // Overwrite the material already in this grade/week/level/subject slot.
+        const persisted = await updateMaterial(conflict.id, payload);
+        if (editingId && editingId !== conflict.id) {
+          await deleteMaterial(editingId);
+        }
+        showToast(
+          persisted
+            ? `Replaced “${conflict.title}” for all students.`
+            : `Replaced “${conflict.title}” (session only).`,
+        );
+      } else if (editingId) {
+        const persisted = await updateMaterial(editingId, payload);
+        showToast(
+          persisted
+            ? "Material updated for all students."
+            : "Material updated (session only — configure Supabase).",
+        );
+      } else {
+        const persisted = await addMaterial({
+          id: `upload-${slugify(trimmedTitle) || "material"}-${Date.now()}`,
+          ...payload,
+        });
+        showToast(
+          persisted
+            ? "Material added for all students."
+            : "Material added (session only — configure Supabase).",
+        );
+      }
+
+      resetForm();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    const pages = buildMediaPages(filledPages);
-    const coverImageUrl = filledPages[0].url;
-    const payload = {
-      title: trimmedTitle,
-      description: trimmedDescription,
-      grade: form.grade,
-      week: form.week,
-      level: form.level,
-      subject: form.subject,
-      thumbnail: DEFAULT_THUMBNAIL,
-      coverImageUrl,
-      downloadUrl: coverImageUrl,
-      pages,
-    };
-
-    if (editingId) {
-      updateMaterial(editingId, payload);
-      showToast("Material updated.");
-    } else {
-      addMaterial({
-        id: `upload-${slugify(trimmedTitle) || "material"}-${Date.now()}`,
-        ...payload,
-      });
-      showToast("Material added.");
-    }
-
-    resetForm();
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await saveMaterial();
   };
 
   if (!ready) {
@@ -498,12 +626,21 @@ export default function TeacherUploadClient() {
             Manage Reading Materials
           </h1>
           <p className="max-w-2xl text-muted">
-            Create, edit, or delete materials on this page. Changes stay in this
-            browser session only (no backend yet).
+            Create, edit, or delete materials on this page.
+            {persistenceEnabled
+              ? " Changes are saved to Supabase and visible to all students."
+              : " Supabase is not configured yet — changes stay in this browser until you add keys to .env.local."}
           </p>
           {teacherEmail ? (
             <p className="text-sm text-slate-500">Signed in as {teacherEmail}</p>
           ) : null}
+          <p
+            className={`text-xs font-bold uppercase tracking-wide ${
+              persistenceEnabled ? "text-emerald-700" : "text-amber-700"
+            }`}
+          >
+            {persistenceEnabled ? "Cloud sync on" : "Cloud sync off"}
+          </p>
         </div>
         <button
           type="button"
@@ -817,8 +954,11 @@ export default function TeacherUploadClient() {
           </div>
         </form>
 
-        <section className="w-full min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(34,100,108,0.06)] sm:p-6 md:max-h-[calc(100vh-12rem)] md:overflow-y-auto">
-          <div className="mb-4">
+        <section
+          className="flex w-full min-w-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_8px_30px_rgba(34,100,108,0.06)] sm:p-6"
+          style={panelHeight ? { height: panelHeight } : undefined}
+        >
+          <div className="mb-4 shrink-0">
             <h2 className="font-display text-xl font-semibold text-foreground">
               All materials
             </h2>
@@ -827,7 +967,7 @@ export default function TeacherUploadClient() {
             </p>
           </div>
 
-          <div className="mb-4 space-y-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
+          <div className="mb-4 shrink-0 space-y-3 rounded-xl border border-slate-100 bg-slate-50/80 p-3">
             <div className="relative">
               <Search
                 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
@@ -902,12 +1042,13 @@ export default function TeacherUploadClient() {
             ) : null}
           </div>
 
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           {sortedMaterials.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-muted">
+            <p className="flex h-full min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-muted">
               No materials yet. Add one using the form.
             </p>
           ) : filteredMaterials.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-muted">
+            <p className="flex h-full min-h-[12rem] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-muted">
               No materials match your filters.
             </p>
           ) : (
@@ -1075,8 +1216,61 @@ export default function TeacherUploadClient() {
               </div>
             </>
           )}
+          </div>
         </section>
       </div>
+
+      {pendingReplace ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-[2px]"
+          role="presentation"
+          onClick={() => {
+            if (!saving) setPendingReplace(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="replace-material-title"
+            className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.25)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2
+              id="replace-material-title"
+              className="font-display text-xl font-semibold text-foreground"
+            >
+              Replace existing material?
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              A material already exists for Grade {form.grade}, Week {form.week},
+              Level {form.level}, {form.subject}.
+            </p>
+            <p className="mt-2 text-sm text-foreground">
+              Replace &quot;{pendingReplace.title}&quot; with this one?
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setPendingReplace(null)}
+                className="inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm font-bold text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+              >
+                Keep existing
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() =>
+                  void saveMaterial({ replaceConflict: pendingReplace })
+                }
+                className="inline-flex min-h-11 items-center justify-center rounded-xl bg-amber-600 px-4 text-sm font-bold text-white transition hover:bg-amber-700 disabled:opacity-60"
+              >
+                {saving ? "Replacing…" : "Replace it"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Toast
         message={toastMessage}

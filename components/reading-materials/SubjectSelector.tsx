@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  BookMarked,
-  BookOpen,
-  Calculator,
-  FlaskConical,
-  Globe2,
-  Layers,
-} from "lucide-react";
+import { BookMarked, BookOpen, FlaskConical } from "lucide-react";
 import { SUBJECTS, type Subject } from "@/types/reading-material";
 
 interface SubjectSelectorProps {
@@ -32,19 +25,13 @@ const subjectThemes: Record<
     icon: "text-[#2d7a83]",
     ring: "ring-[#22646c]",
     Icon: BookOpen,
-  },  Filipino: {
+  },
+  Filipino: {
     card: "bg-[#fff0f3]",
     label: "text-[#f43f5e]",
     icon: "text-[#fb7185]",
     ring: "ring-[#f43f5e]",
     Icon: BookMarked,
-  },
-  Mathematics: {
-    card: "bg-[#fff8e8]",
-    label: "text-[#f59e0b]",
-    icon: "text-[#fbbf24]",
-    ring: "ring-[#f59e0b]",
-    Icon: Calculator,
   },
   Science: {
     card: "bg-[#eafaf0]",
@@ -52,20 +39,6 @@ const subjectThemes: Record<
     icon: "text-[#4ade80]",
     ring: "ring-[#22c55e]",
     Icon: FlaskConical,
-  },
-  "Araling Panlipunan": {
-    card: "bg-[#fff7ed]",
-    label: "text-[#ea580c]",
-    icon: "text-[#fb923c]",
-    ring: "ring-[#ea580c]",
-    Icon: Globe2,
-  },
-  Other: {
-    card: "bg-[#f5f0ff]",
-    label: "text-[#8b5cf6]",
-    icon: "text-[#a78bfa]",
-    ring: "ring-[#8b5cf6]",
-    Icon: Layers,
   },
 };
 
@@ -99,10 +72,11 @@ export default function SubjectSelector({
       </div>
 
       <div
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-3"
+        className="-mx-4 snap-x snap-mandatory overflow-x-auto overscroll-x-contain px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:snap-none sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden"
         role="listbox"
         aria-label="Select subject"
       >
+        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-3 lg:grid-cols-6">
         {subjects.map((subject) => {
           const theme = subjectThemes[subject];
           const Icon = theme.Icon;
@@ -115,7 +89,7 @@ export default function SubjectSelector({
               role="option"
               aria-selected={isActive}
               onClick={() => onChange(subject)}
-              className={`group relative min-h-[7.5rem] overflow-hidden rounded-2xl p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${theme.card} ${
+              className={`group relative w-[9.25rem] shrink-0 snap-start min-h-[7.5rem] overflow-hidden rounded-2xl p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-auto sm:shrink ${theme.card} ${
                 isActive ? `ring-2 ${theme.ring} ring-offset-2` : ""
               }`}
             >
@@ -128,6 +102,7 @@ export default function SubjectSelector({
             </button>
           );
         })}
+        </div>
       </div>
     </div>
   );

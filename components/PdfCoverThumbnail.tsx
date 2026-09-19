@@ -29,7 +29,8 @@ export default function PdfCoverThumbnail({
       setPreviewUrl(null);
 
       try {
-        const pdf = await getDocument({ url }).promise;
+        const loadingTask = getDocument({ url });
+        const pdf = await loadingTask.promise;
         const page = await pdf.getPage(1);
         const unscaled = page.getViewport({ scale: 1 });
         const targetWidth = 480;
@@ -56,7 +57,11 @@ export default function PdfCoverThumbnail({
           setPreviewUrl(objectUrl);
         }
 
-        await pdf.destroy();
+        if (typeof loadingTask.destroy === "function") {
+          await loadingTask.destroy();
+        } else if (typeof pdf.cleanup === "function") {
+          await pdf.cleanup();
+        }
       } catch {
         if (!cancelled) {
           setFailed(true);

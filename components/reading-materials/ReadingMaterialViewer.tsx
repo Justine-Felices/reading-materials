@@ -20,10 +20,12 @@ import type { ReadingMaterial } from "@/types/reading-material";
 
 interface ReadingMaterialViewerProps {
   material: ReadingMaterial;
+  backHref?: string;
 }
 
 export default function ReadingMaterialViewer({
   material,
+  backHref = "/reading-materials",
 }: ReadingMaterialViewerProps) {
   const [pageIndex, setPageIndex] = useState(0);
   const [pdfPage, setPdfPage] = useState(1);
@@ -112,22 +114,74 @@ export default function ReadingMaterialViewer({
     const element = viewerRef.current;
     if (!element) return;
 
-    if (!document.fullscreenElement) {
-      await element.requestFullscreen();
-      setIsFullscreen(true);
-    } else {
-      await document.exitFullscreen();
+    type FsElement = HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void> | void;
+      webkitRequestFullScreen?: () => Promise<void> | void;
+    };
+    type FsDocument = Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+      webkitCancelFullScreen?: () => Promise<void> | void;
+    };
+
+    const doc = document as FsDocument;
+    const el = element as FsElement;
+    const nativeActive =
+      document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+
+    // CSS immersive mode has no native fullscreen element — use React state.
+    if (isFullscreen || nativeActive) {
+      try {
+        if (nativeActive) {
+          if (typeof document.exitFullscreen === "function") {
+            await document.exitFullscreen();
+          } else if (typeof doc.webkitExitFullscreen === "function") {
+            await doc.webkitExitFullscreen();
+          } else if (typeof doc.webkitCancelFullScreen === "function") {
+            await doc.webkitCancelFullScreen();
+          }
+        }
+      } catch {
+        // Still leave immersive UI below.
+      }
       setIsFullscreen(false);
+      return;
+    }
+
+    try {
+      if (typeof el.requestFullscreen === "function") {
+        await el.requestFullscreen();
+      } else if (typeof el.webkitRequestFullscreen === "function") {
+        await el.webkitRequestFullscreen();
+      } else if (typeof el.webkitRequestFullScreen === "function") {
+        await el.webkitRequestFullScreen();
+      }
+      // Native or CSS immersive — either way show maximized UI.
+      setIsFullscreen(true);
+    } catch {
+      setIsFullscreen(true);
     }
   };
 
   useEffect(() => {
     const onFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+      const doc = document as Document & {
+        webkitFullscreenElement?: Element | null;
+      };
+      const nativeActive =
+        document.fullscreenElement ?? doc.webkitFullscreenElement ?? null;
+      // CSS immersive mode never fires this event; only sync native enter/exit.
+      setIsFullscreen(Boolean(nativeActive));
     };
     document.addEventListener("fullscreenchange", onFullscreenChange);
-    return () =>
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    return () => {
       document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener(
+        "webkitfullscreenchange",
+        onFullscreenChange,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -144,7 +198,11 @@ export default function ReadingMaterialViewer({
       <div className="space-y-6">
         <div
           ref={viewerRef}
-          className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
+          className={
+            isFullscreen
+              ? "fixed inset-0 z-50 overflow-auto rounded-none border-0 bg-slate-100 shadow-none"
+              : "overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-[0_8px_30px_rgba(15,23,42,0.08)]"
+          }
         >
           <div className="flex flex-wrap items-center justify-between gap-3 bg-toolbar px-3 py-2.5 text-white sm:px-4">
             <div className="flex items-center gap-2">
@@ -207,7 +265,7 @@ export default function ReadingMaterialViewer({
               </button>
               <button
                 type="button"
-                onClick={toggleFullscreen}
+                onClick={() => void toggleFullscreen()}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 aria-label={
                   isFullscreen ? "Exit fullscreen" : "Enter fullscreen"
@@ -327,7 +385,7 @@ export default function ReadingMaterialViewer({
             {downloading ? "Downloading…" : "Download Material"}
           </button>
           <Link
-            href="/reading-materials"
+            href={backHref}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary-soft px-6 text-sm font-bold text-primary-dark transition hover:bg-[#d0e6e8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
