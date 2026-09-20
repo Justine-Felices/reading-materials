@@ -36,7 +36,7 @@ function getDownloadExtension(
 function buildTextContent(material: ReadingMaterial): string {
   const lines = [
     material.title,
-    `${material.subject} · Grade ${material.grade} · Week ${material.week} · Level ${material.level}`,
+    `${material.subject} · ${material.grade === 0 ? "Kinder" : `Grade ${material.grade}`} · Week ${material.week} · Level ${material.level}`,
     "",
     material.description,
     "",

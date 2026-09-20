@@ -1,6 +1,6 @@
 "use client";
 
-import { GRADES, type Grade } from "@/types/reading-material";
+import { GRADES, formatGradeLabel, type Grade } from "@/types/reading-material";
 
 interface GradeSelectorProps {
   selected: Grade | null;
@@ -17,13 +17,21 @@ const gradeThemes: Record<
     ring: string;
   }
 > = {
+  0: {
+    card: "bg-[#fff7ed]",
+    label: "text-[#ea580c]",
+    number: "text-[#f97316]",
+    wave: "bg-[#fed7aa]/70",
+    ring: "ring-[#ea580c]",
+  },
   1: {
     card: "bg-[#e4f1f2]",
     label: "text-[#22646c]",
     number: "text-[#2d7a83]",
     wave: "bg-[#b8d6d9]/70",
     ring: "ring-[#22646c]",
-  },  2: {
+  },
+  2: {
     card: "bg-[#eafaf0]",
     label: "text-[#22c55e]",
     number: "text-[#4ade80]",
@@ -62,6 +70,14 @@ const gradeThemes: Record<
 
 function GradeIcon({ grade }: { grade: Grade }) {
   switch (grade) {
+    case 0:
+      return (
+        <div className="relative flex h-12 w-12 items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-orange-300/80" />
+          <div className="absolute h-6 w-6 rounded-full bg-amber-200" />
+          <span className="absolute -right-0.5 top-0 text-xs">⭐</span>
+        </div>
+      );
     case 1:
       return (
         <div className="relative h-12 w-12">
@@ -135,7 +151,7 @@ export default function GradeSelector({
             Choose Your Grade
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            Pick a grade 1 to 6 to see reading materials by week and level.
+            Pick Kinder or Grades 1–6 to see reading materials by week and level.
           </p>
         </div>
       </div>
@@ -145,7 +161,7 @@ export default function GradeSelector({
         role="listbox"
         aria-label="Select grade"
       >
-        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-3 lg:grid-cols-6">
+        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-3 lg:grid-cols-7">
         {GRADES.map((grade) => {
           const theme = gradeThemes[grade];
           const isActive = selected === grade;
@@ -162,13 +178,13 @@ export default function GradeSelector({
               }`}
             >
               <span className={`text-[13px] font-bold ${theme.label}`}>
-                Grade {grade}
+                {formatGradeLabel(grade)}
               </span>
 
               <span
                 className={`mt-0.5 block font-display text-[2.75rem] font-bold leading-none ${theme.number}`}
               >
-                {grade}
+                {grade === 0 ? "K" : grade}
               </span>
 
               <span className="absolute right-3 top-9" aria-hidden="true">

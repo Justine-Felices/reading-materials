@@ -74,11 +74,11 @@ export default function TeacherLoginClient() {
       <div className="mx-auto flex min-h-[calc(100vh-8rem)] max-w-md flex-col justify-center px-4 py-12 sm:px-6">
         <div className="mb-8 text-center">
           <Image
-            src="/school-logo.jpg"
+            src="/school-logo.png"
             alt="Maugat East Elementary School logo"
             width={72}
             height={72}
-            className="mx-auto mb-4 h-16 w-16 rounded-full object-cover shadow-md"
+            className="mx-auto mb-4 h-16 w-16 object-contain"
           />
           <p className="text-sm font-bold uppercase tracking-wide text-primary">
             Teachers only

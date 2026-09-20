@@ -15,6 +15,7 @@ import {
 import {
   LEVELS,
   SUBJECTS,
+  formatGradeLabel,
   type Grade,
   type Level,
   type Subject,
@@ -204,7 +205,7 @@ export default function ReadingMaterialsCatalog() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="font-display text-2xl font-semibold text-foreground">
-                Grade {grade} · {subject}
+                {formatGradeLabel(grade)} · {subject}
               </h2>
               <p className="text-sm text-muted">
                 Sorted by week, then Level 1–3

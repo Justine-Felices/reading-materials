@@ -13,8 +13,21 @@ export default function HomePage() {
   return (
     <div className="bg-white">
       <section className="relative overflow-hidden bg-[#e4f1f2]">
+        <Image
+          src="/school-gate.jpg"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center opacity-[0.42]"
+          aria-hidden="true"
+        />
         <div
-          className="pointer-events-none absolute inset-0 opacity-60"
+          className="pointer-events-none absolute inset-0 bg-[#e4f1f2]/40"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-35"
           aria-hidden="true"
           style={{
             backgroundImage:
@@ -24,14 +37,14 @@ export default function HomePage() {
 
         <div className="relative mx-auto grid min-h-[28rem] max-w-7xl items-center gap-12 px-4 pb-10 pt-16 sm:min-h-[32rem] sm:px-6 lg:min-h-[36rem] lg:grid-cols-[0.95fr_1.05fr] lg:gap-20 lg:px-8 lg:pb-12 lg:pt-20">
           <div className="animate-fade-up space-y-6 lg:pr-4">
-            <p className="inline-flex items-center gap-2 rounded-full bg-[#d0e6e8] px-3 py-1.5 text-sm font-bold text-[#22646c] shadow-sm">
+            <p className="inline-flex items-center gap-2 rounded-full bg-[#d0e6e8]/90 px-3 py-1.5 text-sm font-bold text-[#22646c] shadow-sm backdrop-blur-sm">
               <BookOpen className="h-4 w-4" aria-hidden="true" />
               Digital Reading Program
             </p>
             <h1 className="font-display text-4xl font-semibold leading-tight text-[#163a40] sm:text-5xl lg:text-6xl">
               Project E-READ
             </h1>
-            <p className="max-w-xl text-lg leading-relaxed text-slate-500 sm:text-xl">
+            <p className="max-w-xl text-lg leading-relaxed text-slate-600 sm:text-xl">
               Building better readers, brighter futures. Access a wide range of
               digital reading materials for all grade levels.
             </p>

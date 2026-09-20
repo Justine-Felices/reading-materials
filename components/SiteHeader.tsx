@@ -35,11 +35,11 @@ export default function SiteHeader() {
           className="group flex min-w-0 items-center gap-2.5 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:gap-3"
         >
           <Image
-            src="/school-logo.jpg"
+            src="/school-logo.png"
             alt="Maugat East Elementary School logo"
             width={56}
             height={56}
-            className="h-11 w-11 shrink-0 rounded-full object-cover sm:h-14 sm:w-14"
+            className="h-11 w-11 shrink-0 object-contain sm:h-14 sm:w-14"
             priority
           />
           <span className="min-w-0">

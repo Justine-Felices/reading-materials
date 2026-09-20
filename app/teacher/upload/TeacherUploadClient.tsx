@@ -34,6 +34,7 @@ import {
   GRADES,
   LEVELS,
   SUBJECTS,
+  formatGradeLabel,
   type Grade,
   type Level,
   type PageMediaType,
@@ -755,7 +756,7 @@ export default function TeacherUploadClient() {
               >
                 {GRADES.map((g) => (
                   <option key={g} value={g}>
-                    Grade {g}
+                    {formatGradeLabel(g)}
                   </option>
                 ))}
               </select>
@@ -997,7 +998,7 @@ export default function TeacherUploadClient() {
                 <option value="all">All grades</option>
                 {GRADES.map((g) => (
                   <option key={g} value={g}>
-                    Grade {g}
+                    {formatGradeLabel(g)}
                   </option>
                 ))}
               </select>
@@ -1069,8 +1070,11 @@ export default function TeacherUploadClient() {
                             {material.title}
                           </p>
                           <p className="mt-0.5 text-xs text-slate-500">
-                            G{material.grade} · W{material.week} · L
-                            {material.level} · {material.subject}
+                            {material.grade === 0
+                              ? "Kinder"
+                              : `G${material.grade}`}{" "}
+                            · W{material.week} · L{material.level} ·{" "}
+                            {material.subject}
                           </p>
                         </div>
                         <div className="flex shrink-0 gap-1">
@@ -1171,7 +1175,7 @@ export default function TeacherUploadClient() {
                             ) : null}
                           </td>
                           <td className="px-2 py-3 text-slate-600">
-                            {material.grade}
+                            {formatGradeLabel(material.grade)}
                           </td>
                           <td className="px-2 py-3 text-slate-600">
                             {material.week}
@@ -1242,8 +1246,8 @@ export default function TeacherUploadClient() {
               Replace existing material?
             </h2>
             <p className="mt-2 text-sm text-muted">
-              A material already exists for Grade {form.grade}, Week {form.week},
-              Level {form.level}, {form.subject}.
+              A material already exists for {formatGradeLabel(form.grade)}, Week{" "}
+              {form.week}, Level {form.level}, {form.subject}.
             </p>
             <p className="mt-2 text-sm text-foreground">
               Replace &quot;{pendingReplace.title}&quot; with this one?

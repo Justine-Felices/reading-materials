@@ -24,6 +24,10 @@ export const metadata: Metadata = {
   },
   description:
     "Project E-READ — digital reading materials for Maugat East Elementary School, Maugat East, Padre Garcia, Batangas.",
+  icons: {
+    icon: [{ url: "/school-logo.png", type: "image/png" }],
+    apple: [{ url: "/school-logo.png", type: "image/png" }],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

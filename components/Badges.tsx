@@ -1,5 +1,9 @@
 import type { ReactNode } from "react";
-import type { Level, Subject } from "@/types/reading-material";
+import {
+  formatGradeLabel,
+  type Level,
+  type Subject,
+} from "@/types/reading-material";
 
 const subjectStyles: Record<Subject, string> = {
   English: "bg-[#e4f1f2] text-[#22646c]",
@@ -36,7 +40,9 @@ export function SubjectBadge({ subject }: { subject: Subject }) {
 
 export function GradeBadge({ grade }: { grade: number }) {
   return (
-    <SoftBadge className="bg-[#e4f1f2] text-[#22646c]">Grade {grade}</SoftBadge>
+    <SoftBadge className="bg-[#e4f1f2] text-[#22646c]">
+      {formatGradeLabel(grade)}
+    </SoftBadge>
   );
 }
 

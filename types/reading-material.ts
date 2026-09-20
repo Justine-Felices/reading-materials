@@ -1,6 +1,7 @@
 export type Subject = "English" | "Filipino" | "Science";
 
-export type Grade = 1 | 2 | 3 | 4 | 5 | 6;
+/** 0 = Kinder, then Grades 1–6 */
+export type Grade = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export type Level = 1 | 2 | 3;
 
@@ -44,9 +45,14 @@ export interface ReadingMaterial {
   pages: ReadingPage[];
 }
 
-export const GRADES: Grade[] = [1, 2, 3, 4, 5, 6];
+export const GRADES: Grade[] = [0, 1, 2, 3, 4, 5, 6];
 export const LEVELS: Level[] = [1, 2, 3];
 export const SUBJECTS: Subject[] = ["English", "Filipino", "Science"];
+
+/** Display label: Kinder for 0, otherwise "Grade N". */
+export function formatGradeLabel(grade: number): string {
+  return grade === 0 ? "Kinder" : `Grade ${grade}`;
+}
 export const THUMBNAIL_THEMES: ThumbnailTheme[] = [
   "hen",
   "plant",
