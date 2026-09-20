@@ -37,7 +37,7 @@ Students do **not** need a password.
 1. Open the website home page.
 2. Tap **Explore Reading Materials** (or go to Reading Materials).
 3. Choose a grade: **Kinder**, or **Grade 1–6**.
-4. Choose a subject: **English**, **Filipino**, or **Science**.
+4. Choose a subject: **English**, **Filipino**, **Math**, or **Science**.
 5. Open a **Week** (accordion) to see materials.
 6. Materials are grouped by **Level 1**, **Level 2**, and **Level 3**.
 7. Tap **Read Material** to open the reader, or **Download** to save a file.
@@ -90,7 +90,7 @@ Look for **Cloud sync on** near the top. That means saves go to the school cloud
 | **Grade** | Kinder or Grade 1–6 |
 | **Week** | Week number for your lesson plan (e.g. 1–10) |
 | **Level** | 1, 2, or 3 (difficulty / set) |
-| **Subject** | English, Filipino, or Science |
+| **Subject** | English, Filipino, Math, or Science |
 | **Pages / files** | At least one image or PDF (required) |
 
 3. For each page:

@@ -49,25 +49,13 @@ export default function ReadingMaterialsCatalog() {
     return getByGrade(grade);
   }, [grade, getByGrade]);
 
-  const availableSubjects = useMemo(() => {
-    const set = new Set(
-      gradeMaterials
-        .map((m) => m.subject)
-        .filter((subject): subject is Subject =>
-          (SUBJECTS as readonly string[]).includes(subject),
-        ),
-    );
-    return SUBJECTS.filter((subject) => set.has(subject));
-  }, [gradeMaterials]);
-
-  // Drop subject if it isn't available for the restored grade.
+  // Keep restored subject if it's a valid subject for this school.
   useEffect(() => {
     if (!subject) return;
-    if (availableSubjects.length === 0) return;
-    if (!availableSubjects.includes(subject)) {
+    if (!(SUBJECTS as readonly string[]).includes(subject)) {
       setSubject(null);
     }
-  }, [availableSubjects, subject]);
+  }, [subject]);
 
   const subjectMaterials = useMemo(() => {
     if (!subject) return [];
@@ -195,7 +183,6 @@ export default function ReadingMaterialsCatalog() {
           <SubjectSelector
             selected={subject}
             onChange={handleSubjectChange}
-            availableSubjects={availableSubjects}
           />
         </div>
       ) : null}

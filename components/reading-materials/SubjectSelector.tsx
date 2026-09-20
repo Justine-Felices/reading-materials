@@ -1,12 +1,11 @@
 "use client";
 
-import { BookMarked, BookOpen, FlaskConical } from "lucide-react";
+import { BookMarked, BookOpen, Calculator, FlaskConical } from "lucide-react";
 import { SUBJECTS, type Subject } from "@/types/reading-material";
 
 interface SubjectSelectorProps {
   selected: Subject | null;
   onChange: (subject: Subject) => void;
-  availableSubjects?: Subject[];
 }
 
 const subjectThemes: Record<
@@ -33,6 +32,13 @@ const subjectThemes: Record<
     ring: "ring-[#f43f5e]",
     Icon: BookMarked,
   },
+  Math: {
+    card: "bg-[#fff8e8]",
+    label: "text-[#d97706]",
+    icon: "text-[#f59e0b]",
+    ring: "ring-[#d97706]",
+    Icon: Calculator,
+  },
   Science: {
     card: "bg-[#eafaf0]",
     label: "text-[#22c55e]",
@@ -45,13 +51,7 @@ const subjectThemes: Record<
 export default function SubjectSelector({
   selected,
   onChange,
-  availableSubjects,
 }: SubjectSelectorProps) {
-  const subjects =
-    availableSubjects && availableSubjects.length > 0
-      ? availableSubjects
-      : SUBJECTS;
-
   return (
     <div>
       <div className="mb-5 flex items-start gap-2.5">
@@ -66,7 +66,8 @@ export default function SubjectSelector({
             Choose Your Subject
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            Pick a subject to see materials by week and level.
+            Pick English, Filipino, Math, or Science to see materials by week
+            and level.
           </p>
         </div>
       </div>
@@ -76,32 +77,37 @@ export default function SubjectSelector({
         role="listbox"
         aria-label="Select subject"
       >
-        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-3 lg:grid-cols-6">
-        {subjects.map((subject) => {
-          const theme = subjectThemes[subject];
-          const Icon = theme.Icon;
-          const isActive = selected === subject;
+        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-2 lg:grid-cols-4">
+          {SUBJECTS.map((subject) => {
+            const theme = subjectThemes[subject];
+            const Icon = theme.Icon;
+            const isActive = selected === subject;
 
-          return (
-            <button
-              key={subject}
-              type="button"
-              role="option"
-              aria-selected={isActive}
-              onClick={() => onChange(subject)}
-              className={`group relative w-[9.25rem] shrink-0 snap-start min-h-[7.5rem] overflow-hidden rounded-2xl p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-auto sm:shrink ${theme.card} ${
-                isActive ? `ring-2 ${theme.ring} ring-offset-2` : ""
-              }`}
-            >
-              <span className={`mb-3 inline-flex ${theme.icon}`} aria-hidden="true">
-                <Icon className="h-7 w-7" strokeWidth={1.75} />
-              </span>
-              <span className={`block text-sm font-bold leading-snug ${theme.label}`}>
-                {subject}
-              </span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={subject}
+                type="button"
+                role="option"
+                aria-selected={isActive}
+                onClick={() => onChange(subject)}
+                className={`group relative w-[9.25rem] shrink-0 snap-start min-h-[7.5rem] overflow-hidden rounded-2xl p-3.5 text-left shadow-[0_2px_10px_rgba(15,23,42,0.05)] transition hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(15,23,42,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:w-auto sm:shrink ${theme.card} ${
+                  isActive ? `ring-2 ${theme.ring} ring-offset-2` : ""
+                }`}
+              >
+                <span
+                  className={`mb-3 inline-flex ${theme.icon}`}
+                  aria-hidden="true"
+                >
+                  <Icon className="h-7 w-7" strokeWidth={1.75} />
+                </span>
+                <span
+                  className={`block text-sm font-bold leading-snug ${theme.label}`}
+                >
+                  {subject}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

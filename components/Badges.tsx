@@ -8,6 +8,7 @@ import {
 const subjectStyles: Record<Subject, string> = {
   English: "bg-[#e4f1f2] text-[#22646c]",
   Filipino: "bg-rose-100 text-rose-700",
+  Math: "bg-amber-100 text-amber-800",
   Science: "bg-emerald-100 text-emerald-700",
 };
 
