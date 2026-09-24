@@ -1,6 +1,14 @@
 "use client";
 
-import { BookMarked, BookOpen, Calculator, FlaskConical } from "lucide-react";
+import {
+  BookMarked,
+  BookOpen,
+  Calculator,
+  FlaskConical,
+  Globe2,
+  HeartHandshake,
+  Music,
+} from "lucide-react";
 import { SUBJECTS, type Subject } from "@/types/reading-material";
 
 interface SubjectSelectorProps {
@@ -46,6 +54,27 @@ const subjectThemes: Record<
     ring: "ring-[#22c55e]",
     Icon: FlaskConical,
   },
+  "Araling Panlipunan": {
+    card: "bg-[#e8f4fc]",
+    label: "text-[#0369a1]",
+    icon: "text-[#0ea5e9]",
+    ring: "ring-[#0369a1]",
+    Icon: Globe2,
+  },
+  MAPEH: {
+    card: "bg-[#f5f0ff]",
+    label: "text-[#7c3aed]",
+    icon: "text-[#8b5cf6]",
+    ring: "ring-[#7c3aed]",
+    Icon: Music,
+  },
+  GMRC: {
+    card: "bg-[#fff4e8]",
+    label: "text-[#c2410c]",
+    icon: "text-[#f97316]",
+    ring: "ring-[#c2410c]",
+    Icon: HeartHandshake,
+  },
 };
 
 export default function SubjectSelector({
@@ -66,8 +95,7 @@ export default function SubjectSelector({
             Choose Your Subject
           </h2>
           <p className="mt-0.5 text-sm text-slate-500">
-            Pick English, Filipino, Math, or Science to see materials by week
-            and level.
+            Pick a subject to see materials by week and level.
           </p>
         </div>
       </div>
@@ -77,7 +105,7 @@ export default function SubjectSelector({
         role="listbox"
         aria-label="Select subject"
       >
-        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-2 lg:grid-cols-4">
+        <div className="flex w-max gap-3 sm:grid sm:w-auto sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {SUBJECTS.map((subject) => {
             const theme = subjectThemes[subject];
             const Icon = theme.Icon;

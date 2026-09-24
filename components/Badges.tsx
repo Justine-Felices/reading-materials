@@ -10,6 +10,9 @@ const subjectStyles: Record<Subject, string> = {
   Filipino: "bg-rose-100 text-rose-700",
   Math: "bg-amber-100 text-amber-800",
   Science: "bg-emerald-100 text-emerald-700",
+  "Araling Panlipunan": "bg-sky-100 text-sky-800",
+  MAPEH: "bg-violet-100 text-violet-800",
+  GMRC: "bg-orange-100 text-orange-800",
 };
 
 const levelStyles: Record<Level, string> = {

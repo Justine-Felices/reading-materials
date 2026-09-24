@@ -45,7 +45,7 @@ export default function ReadingMaterialsCatalog() {
   const skipScrollRef = useRef(Boolean(initial.grade));
 
   const gradeMaterials = useMemo(() => {
-    if (!grade) return [];
+    if (grade == null) return [];
     return getByGrade(grade);
   }, [grade, getByGrade]);
 
@@ -114,7 +114,7 @@ export default function ReadingMaterialsCatalog() {
   };
 
   useEffect(() => {
-    if (!grade) return;
+    if (grade == null) return;
     if (skipScrollRef.current) return;
     const timer = window.setTimeout(() => {
       subjectSectionRef.current?.scrollIntoView({
@@ -126,7 +126,7 @@ export default function ReadingMaterialsCatalog() {
   }, [grade]);
 
   useEffect(() => {
-    if (!grade || !subject) return;
+    if (grade == null || !subject) return;
     if (skipScrollRef.current) {
       skipScrollRef.current = false;
       if (focusWeek != null) {
@@ -178,7 +178,7 @@ export default function ReadingMaterialsCatalog() {
     <section className="space-y-8">
       <GradeSelector selected={grade} onChange={handleGradeChange} />
 
-      {grade ? (
+      {grade != null ? (
         <div ref={subjectSectionRef} className="scroll-mt-28">
           <SubjectSelector
             selected={subject}
@@ -187,7 +187,7 @@ export default function ReadingMaterialsCatalog() {
         </div>
       ) : null}
 
-      {grade && subject ? (
+      {grade != null && subject ? (
         <div ref={materialsSectionRef} className="scroll-mt-28 space-y-8">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
